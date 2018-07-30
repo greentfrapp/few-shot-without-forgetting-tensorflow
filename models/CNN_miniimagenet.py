@@ -13,7 +13,7 @@ class FeatureExtractor(object):
 	def __init__(self, inputs, is_training=None):
 		self.inputs = inputs
 		# self.is_training = is_training
-		self.n_filters = [32, 32, 32, 32]
+		self.n_filters = [64, 64, 128, 128]
 		self.dropout_rate = [None, None, 0.1, 0.3]
 		with tf.variable_scope("extractor", reuse=tf.AUTO_REUSE):
 			self.build_model()
@@ -61,7 +61,7 @@ class FeatureExtractor(object):
 			# 	)
 			running_output = relu
 
-		running_output = tf.reshape(running_output, [-1, 5*5*32])
+		running_output = tf.reshape(running_output, [-1, 5*5*128])
 		running_output = tf.nn.l2_normalize(running_output, dim=-1)
 
 		self.output = running_output # shape = (meta_batch_size*num_shot_train, 5*5*32)
@@ -89,7 +89,7 @@ class CNN_miniimagenet(BaseModel):
 
 			classifier_weights = tf.get_variable(
 				name='classifier_weights',
-				shape=(self.num_classes, 5*5*32),
+				shape=(self.num_classes, 5*5*128),
 				dtype=tf.float32,
 			)
 
@@ -121,7 +121,7 @@ class CNN_miniimagenet(BaseModel):
 			# Extract training features
 			train_feature_extractor = FeatureExtractor(self.train_inputs)
 			train_labels = tf.reshape(self.train_labels, [batchsize, -1, self.num_classes])
-			train_features = tf.reshape(train_feature_extractor.output, [batchsize, -1, 5*5*32])
+			train_features = tf.reshape(train_feature_extractor.output, [batchsize, -1, 5*5*128])
 			self.train_features = train_features
 			# Take mean of features for each class
 			output_weights = tf.matmul(train_labels, train_features, transpose_a=True) / tf.expand_dims(tf.reduce_sum(train_labels, axis=1), axis=-1)
@@ -165,7 +165,7 @@ class CNN_miniimagenet(BaseModel):
 
 			# Extract test features
 			test_feature_extractor = FeatureExtractor(self.test_inputs)
-			test_features = tf.reshape(test_feature_extractor.output, [batchsize, -1, 5*5*32])
+			test_features = tf.reshape(test_feature_extractor.output, [batchsize, -1, 5*5*128])
 			
 			class_weights = output_weights
 			class_weights /= tf.norm(class_weights, axis=-1, keep_dims=True)
