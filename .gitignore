@@ -1,3 +1,16 @@
+pretrained*/
+data/*/*
+!data/cifar/*.py
+!data/cifar/*.txt
+!data/cifar/*.md
+!data/miniImagenet/*.py
+!data/miniImagenet/*.csv
+!data/omniglot_resized/*.py
+saved_models/
+# *filenames*
+losses/
+images/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -1,0 +1,1 @@
+from .CNN_miniimagenet import CNN_miniimagenet
