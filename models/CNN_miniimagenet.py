@@ -62,7 +62,7 @@ class FeatureExtractor(object):
 			running_output = relu
 
 		running_output = tf.reshape(running_output, [-1, 5*5*32])
-		running_output = tf.nn.l2_normalize(running_output, axis=-1)
+		running_output = tf.nn.l2_normalize(running_output, dim=-1)
 
 		self.output = running_output # shape = (meta_batch_size*num_shot_train, 5*5*32)
 
@@ -99,7 +99,7 @@ class CNN_miniimagenet(BaseModel):
 				dtype=tf.float32,
 			)
 
-			classifier_weights = tf.nn.l2_normalize(classifier_weights, axis=-1)
+			classifier_weights = tf.nn.l2_normalize(classifier_weights, dim=-1)
 
 			self.logits = scale * tf.matmul(feature_extractor.output, classifier_weights, transpose_b=True)
 
