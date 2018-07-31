@@ -124,7 +124,7 @@ class CNN_miniimagenet(BaseModel):
 			train_features = tf.reshape(train_feature_extractor.output, [batchsize, -1, 5*5*128])
 			self.train_features = train_features
 			# Take mean of features for each class
-			output_weights = tf.matmul(train_labels, train_features, transpose_a=True) / tf.expand_dims(tf.reduce_sum(train_labels, axis=1), axis=-1)
+			class_weights = tf.matmul(train_labels, train_features, transpose_a=True) / tf.expand_dims(tf.reduce_sum(train_labels, axis=1), axis=-1)
 			
 			# Calculate class weights with attention
 			# with tf.variable_scope("attention"):
@@ -167,10 +167,6 @@ class CNN_miniimagenet(BaseModel):
 			test_feature_extractor = FeatureExtractor(self.test_inputs)
 			test_features = tf.reshape(test_feature_extractor.output, [batchsize, -1, 5*5*128])
 			
-			class_weights = output_weights
-			class_weights /= tf.norm(class_weights, axis=-1, keep_dims=True)
-			test_features /= tf.norm(test_features, axis=-1, keep_dims=True)
-
 			self.scale = tf.Variable(
 				initial_value=10.,
 				name="scale",

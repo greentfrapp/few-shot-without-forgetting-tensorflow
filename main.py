@@ -49,9 +49,9 @@ def main(unused_args):
 			datasource='miniimagenet',
 			num_classes=64,
 			num_samples_per_class=1,
-			batch_size=8,
+			batch_size=4,
 			test_set=False,
-			mode='pretrain',
+			mode='fewshot',
 		)
 		image_tensor, label_tensor = data_generator.make_data_tensor(train=True)
 		input_tensors = {
@@ -60,23 +60,47 @@ def main(unused_args):
 		}
 		model = CNN_miniimagenet('model', num_classes=64, input_tensors=input_tensors, mode='pretrain')
 		
+		# Validation
+		data_generator = DataGenerator(
+			datasource='miniimagenet',
+			num_classes=5,
+			num_samples_per_class=2,
+			batch_size=32,
+			test_set=False,
+			mode='fewshot',
+		)
+		metaval_image_tensor, metaval_label_tensor = data_generator.make_data_tensor(train=False)
+		train_inputs = tf.slice(metaval_image_tensor, [0, 0, 0], [-1, 5, -1])
+		test_inputs = tf.slice(metaval_image_tensor, [0, 5, 0], [-1, -1, -1])
+		train_labels = tf.slice(metaval_label_tensor, [0, 0, 0], [-1, 5, -1])
+		test_labels = tf.slice(metaval_label_tensor, [0, 5, 0], [-1, -1, -1])
+		metaval_input_tensors = {
+			'train_inputs': train_inputs, # batch_size, num_classes * (num_samples_per_class - update_batch_size), 28 * 28
+			'train_labels': train_labels, # batch_size, num_classes * (num_samples_per_class - update_batch_size), num_classes
+			'test_inputs': test_inputs, # batch_size, num_classes * update_batch_size, 28 * 28
+			'test_labels': test_labels, # batch_size, num_classes * update_batch_size, num_classes
+		}
+		val_model = CNN_miniimagenet('model', num_classes=5, input_tensors=metaval_input_tensors, mode='fewshot')
+
 		sess = tf.InteractiveSession()
 		tf.global_variables_initializer().run()
 		tf.train.start_queue_runners()
 
-		min_loss = np.inf
-		steps = 60000
+		min_val_loss = np.inf
+		steps = 50000
 		try:
 			for step in np.arange(steps):
 				loss, accuracy, _ = sess.run([model.loss, model.accuracy, model.optimize])
 				if step > 0 and step % FLAGS.print_every == 0:
 					print('Step #{} - Loss : {:.3f} - Acc : {:.3f}'.format(step, loss, accuracy))
 				if step > 0 and (step % FLAGS.validate_every == 0 or step == (steps - 1)):
+					val_loss, val_accuracy = sess.run([val_model.loss, val_model.test_accuracy])
+					print('Validation Step - Loss : {:.3f} - Acc : {:.3f}'.format(val_loss, val_accuracy))
 					if step == (steps - 1):
 						print('Training complete!')
-					if loss < min_loss:
+					if val_loss < min_val_loss:
 						model.save(sess, FLAGS.savepath, global_step=step, verbose=True)
-						min_loss = loss
+						min_val_loss = val_loss
 						
 		# Catch Ctrl-C event and allow save option
 		except KeyboardInterrupt:
