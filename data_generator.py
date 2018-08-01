@@ -120,8 +120,7 @@ class DataGenerator(object):
         if train:
             folders = self.metatrain_character_folders
             # number of tasks, not number of meta-iterations. (divide by metabatch size to measure)
-            num_total_batches = 200000
-            num_total_batches = 5000       
+            num_total_batches = 200000  
         else:
             folders = self.metaval_character_folders
             num_total_batches = 600
@@ -157,7 +156,15 @@ class DataGenerator(object):
                 # quit()
                 labels = list(np.concatenate(np.array(self.num_samples_per_class * [list(range(self.num_classes))]).T, axis=0))
         elif self.datasource == 'miniimagenet':
-            if not train:
+
+            if self.mode == 'pretrain':
+
+                import glob
+                all_filenames = glob.glob('data/miniImagenet/train/n*/*')
+                all_labels = list(np.concatenate(np.array(600 * [list(range(64))]).T, axis=0))
+
+            elif not train:
+
                 all_filenames = []
                 from datetime import datetime
                 start = datetime.now()
@@ -175,11 +182,10 @@ class DataGenerator(object):
                     labels = [li[0] for li in labels_and_images]
                     filenames = [li[1] for li in labels_and_images]
                     all_filenames.extend(filenames)
-
             # temp
             # save and reload pickle for fast iteration
             else:
-                with open("miniimagenet_filenames_64way.pkl", 'rb') as file:
+                with open("miniimagenet_filenames_5way1shot.pkl", 'rb') as file:
                     # pickle.dump(all_filenames, file)
                     all_filenames = pickle.load(file)
                 # quit()
@@ -204,6 +210,29 @@ class DataGenerator(object):
                 all_filenames.extend(filenames)
 
         # make queue for tensorflow to read from
+        if self.mode == 'pretrain':
+            filename_queue = tf.train.string_input_producer(tf.convert_to_tensor(all_filenames), shuffle=True, seed=42)
+            label_queue = tf.train.input_producer(tf.convert_to_tensor(all_labels), shuffle=True, seed=42)
+            print('Generating image processing ops')
+            image_reader = tf.WholeFileReader()
+            _, image_file = image_reader.read(filename_queue)
+            # if self.datasource == 'miniimagenet':
+            image = tf.image.decode_jpeg(image_file, channels=3)
+            image.set_shape((self.img_size[0],self.img_size[1],3))
+            image = tf.reshape(image, [self.dim_input])
+            image = tf.cast(image, tf.float32) / 255.0
+            num_preprocess_threads = 1
+            min_queue_examples = 256
+            images, labels = tf.train.batch(
+                [image, label_queue.dequeue()],
+                batch_size = self.batch_size,
+                num_threads=num_preprocess_threads,
+                capacity=min_queue_examples + 3 * self.batch_size,
+                )
+            labels = tf.one_hot(labels, self.num_classes)
+            return images, labels
+            
+
         filename_queue = tf.train.string_input_producer(tf.convert_to_tensor(all_filenames), shuffle=False)
         print('Generating image processing ops')
         image_reader = tf.WholeFileReader()
